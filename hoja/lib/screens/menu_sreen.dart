@@ -25,7 +25,7 @@ class _MenuScreenState extends State<MenuScreen> {
       body: ListView(
         children: [
           const ListTile(
-            title: Text('Jaime Contreras'),
+            title: Text('Alejandro Builes Restrepo'),
             subtitle: Text('Conoceme'),
             leading: Icon(
               Icons.people,
