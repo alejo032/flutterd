@@ -29,8 +29,7 @@ class Producto {
 }
 
 Future<List<Producto>> fetchPosts() async {
-  final response = await http
-      .get(Uri.parse('https://backendexamen-f4y7.onrender.com/producto'));
+  final response = await http.get(Uri.parse('https://backendexamen-f4y7.onrender.com/producto'));
 
   if (response.statusCode == 200) {
     final jsonData = json.decode(response.body) as Map<String, dynamic>;
@@ -49,42 +48,127 @@ class ListarProductos extends StatefulWidget {
 }
 
 class _ListarProductosState extends State<ListarProductos> {
-  // Método para editar una exportación
+  late List<Producto> productos;
+  late List<Producto> filteredProductos;
+
+  TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    filteredProductos = [];
+    fetchPosts().then((list) {
+      setState(() {
+        productos = list;
+        filteredProductos = list;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Productos'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  filteredProductos = productos
+                      .where((producto) =>
+                          producto.nombreProducto.toLowerCase().contains(value.toLowerCase()))
+                      .toList();
+                });
+              },
+              decoration: InputDecoration(
+                labelText: "Buscar producto",
+                hintText: "Ingrese el nombre del producto",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(25.0),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredProductos.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(filteredProductos[index].nombreProducto),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(filteredProductos[index].precioProducto.toString()),
+                      Text(filteredProductos[index].ivaProducto.toString()),
+                      Text(filteredProductos[index].Existencias.toString()),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          mostrarVentanaEdicion(context, filteredProductos[index]);
+                          print('Editar');
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          eliminarProducto(filteredProductos[index]);
+                          print('Eliminar');
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> editarProducto(Producto producto) async {
-    // URL de la API donde se encuentra el recurso a editar
     const String url = 'https://backendexamen-f4y7.onrender.com/producto';
 
-    // Convierte los datos de la exportación a un formato que la API pueda entender (JSON)
     final Map<String, dynamic> datosActualizados = {
-      // Aquí debes incluir los campos que deseas actualizar
       '_id': producto.id,
       'nombreProducto': producto.nombreProducto,
       'precioProducto': producto.precioProducto,
       'ivaProducto': producto.ivaProducto,
       'Existencias': producto.Existencias,
     };
-    print('Datos actualizados:');
-    print(datosActualizados);
 
-    // Codificar los datos a JSON
     final String cuerpoJson = jsonEncode(datosActualizados);
 
     try {
-      // Realiza la solicitud PUT al servidor
       final response = await http.put(
         Uri.parse(url),
-        headers: {
-          'Content-Type': 'application/json'
-        }, // Establecer la cabecera para indicar que el cuerpo es JSON
-        body: cuerpoJson, // Pasar el cuerpo codificado JSON
+        headers: {'Content-Type': 'application/json'},
+        body: cuerpoJson,
       );
 
-      // Verifica si la solicitud fue exitosa (código de estado 200)
       if (response.statusCode == 200) {
-        print('producto editado con éxito');
-        setState(() {});
+        print('Producto editado con éxito');
+        fetchPosts().then((list) {
+          setState(() {
+            productos = list;
+            filteredProductos = list;
+          });
+        });
       } else {
-        print('Error al editar exportación: ${response.reasonPhrase}');
+        print('Error al editar producto: ${response.reasonPhrase}');
       }
     } catch (e) {
       print('Error al realizar la solicitud: $e');
@@ -122,7 +206,7 @@ class _ListarProductosState extends State<ListarProductos> {
                 TextField(
                   controller: ivaProductoController,
                   decoration:
-                      const InputDecoration(labelText: 'Iva Producto'),
+                      const InputDecoration(labelText: 'IVA Producto'),
                   keyboardType: TextInputType.number,
                 ),
                 TextField(
@@ -143,12 +227,10 @@ class _ListarProductosState extends State<ListarProductos> {
             ),
             TextButton(
               onPressed: () {
-                // Convertir los valores de texto a tipos numéricos
                 int precioProducto = int.parse(precioProductoController.text);
                 int ivaProducto = int.parse(ivaProductoController.text);
                 int Existencias = int.parse(ExistenciasController.text);
 
-                // Crear la instancia de Exportacion con los valores convertidos
                 Producto productoActualizada = Producto(
                   id: producto.id,
                   nombreProducto: nombreProductoController.text,
@@ -169,106 +251,45 @@ class _ListarProductosState extends State<ListarProductos> {
 
   void eliminarProducto(Producto producto) async {
     showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text("Confirmar eliminación"),
-        content: Text("¿Estás seguro de que deseas eliminar este producto?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(), // Cerrar el diálogo
-            child: Text("Cancelar"),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop(); // Cerrar el diálogo
-              try {
-                // URL de la API para eliminar la exportación
-                String url =
-                    'https://backendexamen-f4y7.onrender.com/producto?id=${producto.id}';
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Confirmar eliminación"),
+          content: Text("¿Estás seguro de que deseas eliminar este producto?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text("Cancelar"),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  String url = 'https://backendexamen-f4y7.onrender.com/producto?id=${producto.id}';
+                  final response = await http.delete(Uri.parse(url));
 
-                // Realiza la solicitud DELETE a la API
-                final response = await http.delete(Uri.parse(url));
-
-                // Verifica si la solicitud fue exitosa (código de estado 200)
-                if (response.statusCode == 200) {
-                  // La exportación se eliminó correctamente
-                  print('La exportación con ID ${producto.id} se eliminó correctamente.');
-                  setState(() {});
-                } else {
-                  // Hubo un error al eliminar la exportación
-                  print('Error al eliminar la exportación: ${response.statusCode}');
+                  if (response.statusCode == 200) {
+                    print('Producto con ID ${producto.id} eliminado correctamente.');
+                    fetchPosts().then((list) {
+                      setState(() {
+                        productos = list;
+                        filteredProductos = list;
+                      });
+                    });
+                  } else {
+                    print('Error al eliminar producto: ${response.statusCode}');
+                  }
+                } catch (e) {
+                  print('Error al eliminar producto: $e');
                 }
-              } catch (e) {
-                // Manejo de errores
-                print('Error al eliminar la exportación: $e');
-              }
-            },
-            child: Text("Eliminar"),
-          ),
-        ],
-      );
-    },
-  );
-}
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Productos'),
-      ),
-      body: FutureBuilder(
-        future: fetchPosts(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          } else if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          } else {
-            List<Producto> productos =
-                snapshot.data as List<Producto>;
-            return ListView.builder(
-              itemCount: productos.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(productos[index].nombreProducto),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(productos[index].precioProducto.toString()),
-                      Text(productos[index].ivaProducto.toString()),
-                      Text(productos[index].Existencias.toString()),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () {
-                          mostrarVentanaEdicion(context, productos[index]);
-                          // Implementar la lógica para editar aquí
-                          print('Editar');
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () {
-                          eliminarProducto(productos[index]);
-                          // Implementar la lógica para eliminar aquí
-                          print('Eliminar');
-                        },
-                      ),
-                    ],
-                  ),
-                );
               },
-            );
-          }
-        },
-      ),
+              child: Text("Eliminar"),
+            ),
+          ],
+        );
+      },
     );
   }
 }
+
+

@@ -96,7 +96,7 @@ class _RegistrarProveedoresState extends State<RegistrarProveedores> {
                 } else {
                   var usuario = {
                     "nombreProveedor": nombreProveedor.text,
-                    "NombreContactoProveedor": nombreContactoProveedor.text,
+                    "Nombrecontactoproveedor": nombreContactoProveedor.text,
                     "Telefono": telefono.text,
                     "Direccion": direccion.text,
                     "Nit": nit.text
